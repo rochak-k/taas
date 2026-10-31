@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Taas — Marriage & Call Break Score Tracker
 
-## Getting Started
+A mobile-friendly Next.js app for keeping Marriage and Call Break scores. English
+and Nepali are supported, and game data is saved in the browser.
 
-First, run the development server:
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). Run `npm run lint` and
+`npm run build` to validate the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Game scoring
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Marriage:** Each round requires exactly one Show player. Unseen players'
+  entered points count as zero. The supplied worked example includes the Show
+  player's points in the "without Show" subtotal and adds 3 only for a
+  positive-point Seen player other than Show; the calculation follows that
+  example so its required results are reproduced. The Show player's balance
+  is the negative sum of all other balances, so every completed round is
+  zero-sum. Incomplete rounds are excluded from cumulative totals.
+- **Call Break:** meeting the call scores the called tricks plus `0.1` per
+  additional trick; missing the call subtracts the called tricks. Optional
+  bonuses are added and penalties are subtracted.
 
-## Learn More
+Both scoring functions are isolated in `lib/marriageCalculations.ts` and
+`lib/callbreakCalculations.ts`.
 
-To learn more about Next.js, take a look at the following resources:
+## Browser storage
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Language, Marriage, and Call Break data use separate local-storage keys. Game
+records are saved in versioned envelopes; invalid or newer unsupported data is
+left untouched and a warning is shown instead of silently overwriting it.
+Clearing browser storage removes saved game data.
