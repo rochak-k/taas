@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Taas — Marriage & Call Break Score Tracker",
+  title: "Taas",
   description: "A simple, family-friendly score tracker for Marriage and Call Break.",
 };
 
