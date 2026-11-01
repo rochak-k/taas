@@ -243,6 +243,9 @@ function MarriageTracker({
   text: ReturnType<typeof useLanguage>["text"];
 }) {
   const [rateDraft, setRateDraft] = useState<string | null>(null);
+  const [expandedRoundId, setExpandedRoundId] = useState<string | null | undefined>(
+    undefined,
+  );
 
   const roundResults = useMemo(
     () =>
@@ -278,6 +281,7 @@ function MarriageTracker({
   function updatePlayerCount(count: number) {
     if (count === data.playerCount) return;
     if (data.rounds.length && !window.confirm(text.confirmPlayerCountChange)) return;
+    setExpandedRoundId(null);
     setData((current) => ({
       ...current,
       playerCount: count,
@@ -294,17 +298,21 @@ function MarriageTracker({
   }
 
   function addRound() {
+    const newRound = {
+      id: createId(),
+      scores: Array.from({ length: data.playerCount }, () => 0),
+      statuses: Array.from({ length: data.playerCount }, () => "seen" as const),
+    };
+    setExpandedRoundId(newRound.id);
     setData((current) => ({
       ...current,
-      rounds: [
-        ...current.rounds,
-        {
-          id: createId(),
-          scores: Array.from({ length: current.playerCount }, () => 0),
-          statuses: Array.from({ length: current.playerCount }, () => "seen" as const),
-        },
-      ],
+      rounds: [...current.rounds, newRound],
     }));
+    window.setTimeout(() => {
+      document
+        .getElementById(`marriage-round-${newRound.id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 260);
   }
 
   function updateScore(roundId: string, playerIndex: number, rawValue: string) {
@@ -364,6 +372,7 @@ function MarriageTracker({
   function reset() {
     if (window.confirm(text.confirmResetGame)) {
       setData(createMarriageData());
+      setExpandedRoundId(null);
       setRateDraft(null);
     }
   }
@@ -472,131 +481,191 @@ function MarriageTracker({
                 statuses[index] !== "unseen" &&
                 (points === null || !Number.isFinite(points) || points < 0),
             );
+            const expanded =
+              expandedRoundId === undefined
+                ? roundIndex === data.rounds.length - 1
+                : expandedRoundId === round.id;
             return (
-              <section className="panel marriage-round" key={round.id}>
+              <section
+                className={`panel marriage-round ${expanded ? "round-card-expanded" : "round-card-collapsed"}`}
+                id={`marriage-round-${round.id}`}
+                key={round.id}
+              >
                 <div className="round-card-heading">
                   <h3>{text.game} {roundIndex + 1}</h3>
-                  <button
-                    type="button"
-                    className="button button-delete"
-                    onClick={() => {
-                      if (window.confirm(text.confirmDeleteRound)) {
-                        setData((current) => ({
-                          ...current,
-                          rounds: current.rounds.filter((item) => item.id !== round.id),
-                        }));
+                  <div className="round-card-controls">
+                    <button
+                      type="button"
+                      className="button button-round-toggle"
+                      aria-expanded={expanded}
+                      aria-controls={`marriage-round-content-${round.id}`}
+                      onClick={() =>
+                        setExpandedRoundId(expanded ? null : round.id)
                       }
-                    }}
-                  >
-                    {text.delete}
-                  </button>
+                    >
+                      {expanded ? text.hideGame : text.viewGame}
+                    </button>
+                    <button
+                      type="button"
+                      className="button button-delete"
+                      onClick={() => {
+                        if (window.confirm(text.confirmDeleteRound)) {
+                          const remainingRounds = data.rounds.filter(
+                            (item) => item.id !== round.id,
+                          );
+                          setData((current) => ({
+                            ...current,
+                            rounds: current.rounds.filter(
+                              (item) => item.id !== round.id,
+                            ),
+                          }));
+                          setExpandedRoundId((current) =>
+                            current === round.id
+                              ? remainingRounds[remainingRounds.length - 1]?.id ?? null
+                              : current,
+                          );
+                        }
+                      }}
+                    >
+                      {text.delete}
+                    </button>
+                  </div>
                 </div>
-                <div className="marriage-round-players">
-                  {data.players.map((player, playerIndex) => {
-                    const name = player || `${text.player} ${playerIndex + 1}`;
-                    const status = statuses[playerIndex];
-                    const playerResult = result?.players[playerIndex];
-                    const anotherShowSelected =
-                      showCount > 0 && status !== "show";
-                    return (
-                      <div className="marriage-player-line" key={playerIndex}>
-                        <strong className="marriage-player-name">{name}</strong>
-                        <div className="marriage-status-field">
-                          <span className="marriage-field-label">{text.status}</span>
-                          <div className="marriage-status-control">
-                            {(
-                              [
-                                ["seen", text.seen],
-                                ["unseen", text.unseen],
-                                ["show", text.show],
-                              ] as const
-                            ).map(([value, label]) => (
-                              <button
-                                type="button"
-                                key={value}
-                                className={`marriage-status-button ${status === value ? "status-selected" : ""}`}
-                                aria-pressed={status === value}
-                                disabled={value === "show" && anotherShowSelected}
-                                aria-label={`${name}: ${label}`}
-                                onClick={() =>
-                                  updateStatus(round.id, playerIndex, value)
-                                }
-                              >
-                                {label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <label className="marriage-points-field">
-                          <span className="marriage-field-label">{text.points}</span>
-                          <input
-                            type="number"
-                            min="0"
-                            step="any"
-                            disabled={status === "unseen"}
-                            aria-label={`${name} ${text.points} ${text.game} ${roundIndex + 1}`}
-                            value={
-                              status === "unseen"
-                                ? 0
-                                : round.scores[playerIndex] ?? ""
-                            }
-                            onChange={(event) =>
-                              updateScore(round.id, playerIndex, event.target.value)
-                            }
-                          />
-                        </label>
-                        <div className="marriage-round-results">
-                          <div>
-                            <span>{text.netPoints}</span>
+                {!expanded && (
+                  <div className="round-card-preview">
+                    <div className="round-preview-player-list">
+                      {data.players.map((player, playerIndex) => {
+                        const name = player || `${text.player} ${playerIndex + 1}`;
+                        const playerResult = result?.players[playerIndex];
+                        return (
+                          <div className="round-preview-player" key={playerIndex}>
+                            <strong>{name}</strong>
                             {playerResult ? (
                               <SignedScoreValue value={playerResult.netPoints} />
                             ) : (
                               <span className="muted-result">—</span>
                             )}
                           </div>
-                          <div>
-                            <span>{text.amountToReceiveOrPay}</span>
-                            {playerResult ? (
-                              <SignedScoreValue
-                                value={playerResult.money}
-                                currency={text.rupees}
-                              />
-                            ) : (
-                              <span className="muted-result">—</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                {!result && (
-                  <p className="round-help" role="status">
-                    {showCount === 0
-                      ? text.selectOneShow
-                      : showCount > 1
-                        ? text.selectOnlyOneShow
-                        : hasMissingPoints
-                          ? text.enterValidPoints
-                          : text.incompleteRound}
-                  </p>
-                )}
-                {result && (
-                  <div className="marriage-round-totals">
-                    <SummaryStat
-                      label={text.totalPointsWithoutShow}
-                      value={String(result.totalPointsWithoutShow)}
-                    />
-                    <SummaryStat
-                      label={text.totalPointsWithShow}
-                      value={String(result.totalPointsWithShow)}
-                    />
-                    <SummaryStat
-                      label={text.totalPointsDistributed}
-                      value={String(result.totalPointsDistributed)}
-                    />
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
+                <div
+                  className={`round-card-content${expanded ? " round-card-content-expanded" : ""}`}
+                  id={`marriage-round-content-${round.id}`}
+                  aria-hidden={!expanded}
+                  inert={!expanded}
+                >
+                  <div className="round-card-content-inner">
+                    <div className="marriage-round-players">
+                      {data.players.map((player, playerIndex) => {
+                        const name = player || `${text.player} ${playerIndex + 1}`;
+                        const status = statuses[playerIndex];
+                        const playerResult = result?.players[playerIndex];
+                        const anotherShowSelected =
+                          showCount > 0 && status !== "show";
+                        return (
+                          <div className="marriage-player-line" key={playerIndex}>
+                            <strong className="marriage-player-name">{name}</strong>
+                            <div className="marriage-status-field">
+                              <span className="marriage-field-label">{text.status}</span>
+                              <div className="marriage-status-control">
+                                {(
+                                  [
+                                    ["seen", text.seen],
+                                    ["unseen", text.unseen],
+                                    ["show", text.show],
+                                  ] as const
+                                ).map(([value, label]) => (
+                                  <button
+                                    type="button"
+                                    key={value}
+                                    className={`marriage-status-button ${status === value ? "status-selected" : ""}`}
+                                    aria-pressed={status === value}
+                                    disabled={value === "show" && anotherShowSelected}
+                                    aria-label={`${name}: ${label}`}
+                                    onClick={() =>
+                                      updateStatus(round.id, playerIndex, value)
+                                    }
+                                  >
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <label className="marriage-points-field">
+                              <span className="marriage-field-label">{text.points}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                disabled={status === "unseen"}
+                                aria-label={`${name} ${text.points} ${text.game} ${roundIndex + 1}`}
+                                value={
+                                  status === "unseen"
+                                    ? 0
+                                    : round.scores[playerIndex] ?? ""
+                                }
+                                onChange={(event) =>
+                                  updateScore(round.id, playerIndex, event.target.value)
+                                }
+                              />
+                            </label>
+                            <div className="marriage-round-results">
+                              <div>
+                                <span>{text.netPoints}</span>
+                                {playerResult ? (
+                                  <SignedScoreValue value={playerResult.netPoints} />
+                                ) : (
+                                  <span className="muted-result">—</span>
+                                )}
+                              </div>
+                              <div>
+                                <span>{text.amountToReceiveOrPay}</span>
+                                {playerResult ? (
+                                  <SignedScoreValue
+                                    value={playerResult.money}
+                                    currency={text.rupees}
+                                  />
+                                ) : (
+                                  <span className="muted-result">—</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {!result && (
+                      <p className="round-help" role="status">
+                        {showCount === 0
+                          ? text.selectOneShow
+                          : showCount > 1
+                            ? text.selectOnlyOneShow
+                            : hasMissingPoints
+                              ? text.enterValidPoints
+                              : text.incompleteRound}
+                      </p>
+                    )}
+                    {result && (
+                      <div className="marriage-round-totals">
+                        <SummaryStat
+                          label={text.totalPointsWithoutShow}
+                          value={String(result.totalPointsWithoutShow)}
+                        />
+                        <SummaryStat
+                          label={text.totalPointsWithShow}
+                          value={String(result.totalPointsWithShow)}
+                        />
+                        <SummaryStat
+                          label={text.totalPointsDistributed}
+                          value={String(result.totalPointsDistributed)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               </section>
             );
           })}
@@ -729,6 +798,10 @@ function CallBreakTracker({
   openAdjustments: string[];
   setOpenAdjustments: React.Dispatch<React.SetStateAction<string[]>>;
 }) {
+  const [expandedRoundId, setExpandedRoundId] = useState<string | null | undefined>(
+    undefined,
+  );
+
   const totals = data.players.map((_, playerIndex) =>
     data.rounds.reduce(
       (total, round) => total + calculateCallBreakScore(round.entries[playerIndex]),
@@ -766,21 +839,25 @@ function CallBreakTracker({
     .sort((left, right) => right.total - left.total);
 
   function addRound() {
+    const newRound = {
+      id: createId(),
+      entries: Array.from({ length: 4 }, () => ({
+        called: 0,
+        won: 0,
+        bonus: 0,
+        penalty: 0,
+      })),
+    };
+    setExpandedRoundId(newRound.id);
     setData((current) => ({
       ...current,
-      rounds: [
-        ...current.rounds,
-        {
-          id: createId(),
-          entries: Array.from({ length: 4 }, () => ({
-            called: 0,
-            won: 0,
-            bonus: 0,
-            penalty: 0,
-          })),
-        },
-      ],
+      rounds: [...current.rounds, newRound],
     }));
+    window.setTimeout(() => {
+      document
+        .getElementById(`call-round-${newRound.id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 260);
   }
 
   function updateEntry(
@@ -813,6 +890,7 @@ function CallBreakTracker({
     if (window.confirm(text.confirmResetGame)) {
       setData(createCallBreakData());
       setOpenAdjustments([]);
+      setExpandedRoundId(null);
     }
   }
 
@@ -868,125 +946,185 @@ function CallBreakTracker({
       ) : (
         <div className="round-list">
           {data.rounds.map((round, roundIndex) => {
-            const expanded = openAdjustments.includes(round.id);
+            const expanded =
+              expandedRoundId === undefined
+                ? roundIndex === data.rounds.length - 1
+                : expandedRoundId === round.id;
+            const bonusExpanded = openAdjustments.includes(round.id);
             return (
-              <section className="panel call-round" key={round.id}>
+              <section
+                className={`panel call-round ${expanded ? "round-card-expanded" : "round-card-collapsed"}`}
+                id={`call-round-${round.id}`}
+                key={round.id}
+              >
                 <div className="round-card-heading">
                   <h3>{text.round} {roundIndex + 1}</h3>
-                  <button
-                    type="button"
-                    className="button button-delete"
-                    onClick={() => {
-                      if (window.confirm(text.confirmDeleteRound)) {
-                        setData((current) => ({
-                          ...current,
-                          rounds: current.rounds.filter((item) => item.id !== round.id),
-                        }));
-                        setOpenAdjustments((current) =>
-                          current.filter((id) => id !== round.id),
-                        );
+                  <div className="round-card-controls">
+                    <button
+                      type="button"
+                      className="button button-round-toggle"
+                      aria-expanded={expanded}
+                      aria-controls={`call-round-content-${round.id}`}
+                      onClick={() =>
+                        setExpandedRoundId(expanded ? null : round.id)
                       }
-                    }}
-                  >
-                    {text.delete}
-                  </button>
+                    >
+                      {expanded ? text.hideRound : text.viewRound}
+                    </button>
+                    <button
+                      type="button"
+                      className="button button-delete"
+                      onClick={() => {
+                        if (window.confirm(text.confirmDeleteRound)) {
+                          const remainingRounds = data.rounds.filter(
+                            (item) => item.id !== round.id,
+                          );
+                          setData((current) => ({
+                            ...current,
+                            rounds: current.rounds.filter(
+                              (item) => item.id !== round.id,
+                            ),
+                          }));
+                          setOpenAdjustments((current) =>
+                            current.filter((id) => id !== round.id),
+                          );
+                          setExpandedRoundId((current) =>
+                            current === round.id
+                              ? remainingRounds[remainingRounds.length - 1]?.id ?? null
+                              : current,
+                          );
+                        }
+                      }}
+                    >
+                      {text.delete}
+                    </button>
+                  </div>
                 </div>
-                <div className="call-round-labels" aria-hidden="true">
-                  <span>{text.players}</span>
-                  <span>{text.called}</span>
-                  <span>{text.won}</span>
-                  <span>{text.score}</span>
-                </div>
-                <div className="call-player-list">
-                  {round.entries.map((entry, playerIndex) => (
-                    <div className="call-player-row" key={playerIndex}>
-                      <span className="call-player-name">
-                        {data.players[playerIndex] || `${text.player} ${playerIndex + 1}`}
-                      </span>
-                      <label className="call-input">
-                        <span className="visually-hidden">{text.called}</span>
-                        <input
-                          type="number"
-                          min="0"
-                          max="13"
-                          step="1"
-                          aria-label={`${data.players[playerIndex] || `${text.player} ${playerIndex + 1}`} ${text.called} ${text.round} ${roundIndex + 1}`}
-                          value={entry.called}
-                          onChange={(event) =>
-                            updateEntry(round.id, playerIndex, "called", event.target.value)
-                          }
-                        />
-                      </label>
-                      <label className="call-input">
-                        <span className="visually-hidden">{text.won}</span>
-                        <input
-                          type="number"
-                          min="0"
-                          max="13"
-                          step="1"
-                          aria-label={`${data.players[playerIndex] || `${text.player} ${playerIndex + 1}`} ${text.won} ${text.round} ${roundIndex + 1}`}
-                          value={entry.won}
-                          onChange={(event) =>
-                            updateEntry(round.id, playerIndex, "won", event.target.value)
-                          }
-                        />
-                      </label>
-                      <span className="call-player-score">
-                        <ScoreValue value={calculateCallBreakScore(entry)} />
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="adjustment-toggle"
-                  aria-expanded={expanded}
-                  onClick={() =>
-                    setOpenAdjustments((current) =>
-                      expanded
-                        ? current.filter((id) => id !== round.id)
-                        : [...current, round.id],
-                    )
-                  }
-                >
-                  <span aria-hidden="true">{expanded ? "−" : "+"}</span>
-                  {text.bonusPenalty}
-                </button>
-                {expanded && (
-                  <div className="adjustments-grid">
-                    {round.entries.map((entry, playerIndex) => (
-                      <div className="adjustment-player" key={playerIndex}>
-                        <strong>{data.players[playerIndex] || `${text.player} ${playerIndex + 1}`}</strong>
-                        <label>
-                          <span>{text.bonus}</span>
-                          <input
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={entry.bonus}
-                            aria-label={`${data.players[playerIndex] || `${text.player} ${playerIndex + 1}`} ${text.bonus}`}
-                            onChange={(event) =>
-                              updateEntry(round.id, playerIndex, "bonus", event.target.value)
-                            }
-                          />
-                        </label>
-                        <label>
-                          <span>{text.penalty}</span>
-                          <input
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={entry.penalty}
-                            aria-label={`${data.players[playerIndex] || `${text.player} ${playerIndex + 1}`} ${text.penalty}`}
-                            onChange={(event) =>
-                              updateEntry(round.id, playerIndex, "penalty", event.target.value)
-                            }
-                          />
-                        </label>
-                      </div>
-                    ))}
+                {!expanded && (
+                  <div className="round-card-preview round-preview-player-list">
+                    {round.entries.map((entry, playerIndex) => {
+                      const score = calculateCallBreakScore(entry);
+                      const sign = score > 0 ? "+" : "";
+                      return (
+                        <div className="round-preview-player" key={playerIndex}>
+                          <strong>
+                            {data.players[playerIndex] || `${text.player} ${playerIndex + 1}`}
+                          </strong>
+                          <span
+                            className={`score-value ${score > 0 ? "positive" : score < 0 ? "negative" : "neutral"}`}
+                          >
+                            {sign}{score.toFixed(2)}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
+                <div
+                  className={`round-card-content${expanded ? " round-card-content-expanded" : ""}`}
+                  id={`call-round-content-${round.id}`}
+                  aria-hidden={!expanded}
+                  inert={!expanded}
+                >
+                  <div className="round-card-content-inner">
+                    <div className="call-round-labels" aria-hidden="true">
+                      <span>{text.players}</span>
+                      <span>{text.called}</span>
+                      <span>{text.won}</span>
+                      <span>{text.score}</span>
+                    </div>
+                    <div className="call-player-list">
+                      {round.entries.map((entry, playerIndex) => (
+                        <div className="call-player-row" key={playerIndex}>
+                          <span className="call-player-name">
+                            {data.players[playerIndex] || `${text.player} ${playerIndex + 1}`}
+                          </span>
+                          <label className="call-input">
+                            <span className="visually-hidden">{text.called}</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="13"
+                              step="1"
+                              aria-label={`${data.players[playerIndex] || `${text.player} ${playerIndex + 1}`} ${text.called} ${text.round} ${roundIndex + 1}`}
+                              value={entry.called}
+                              onChange={(event) =>
+                                updateEntry(round.id, playerIndex, "called", event.target.value)
+                              }
+                            />
+                          </label>
+                          <label className="call-input">
+                            <span className="visually-hidden">{text.won}</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="13"
+                              step="1"
+                              aria-label={`${data.players[playerIndex] || `${text.player} ${playerIndex + 1}`} ${text.won} ${text.round} ${roundIndex + 1}`}
+                              value={entry.won}
+                              onChange={(event) =>
+                                updateEntry(round.id, playerIndex, "won", event.target.value)
+                              }
+                            />
+                          </label>
+                          <span className="call-player-score">
+                            <ScoreValue value={calculateCallBreakScore(entry)} />
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="adjustment-toggle"
+                      aria-expanded={bonusExpanded}
+                      onClick={() =>
+                        setOpenAdjustments((current) =>
+                          bonusExpanded
+                            ? current.filter((id) => id !== round.id)
+                            : [...current, round.id],
+                        )
+                      }
+                    >
+                      <span aria-hidden="true">{bonusExpanded ? "−" : "+"}</span>
+                      {text.bonusPenalty}
+                    </button>
+                    {bonusExpanded && (
+                      <div className="adjustments-grid">
+                        {round.entries.map((entry, playerIndex) => (
+                          <div className="adjustment-player" key={playerIndex}>
+                            <strong>{data.players[playerIndex] || `${text.player} ${playerIndex + 1}`}</strong>
+                            <label>
+                              <span>{text.bonus}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                value={entry.bonus}
+                                aria-label={`${data.players[playerIndex] || `${text.player} ${playerIndex + 1}`} ${text.bonus}`}
+                                onChange={(event) =>
+                                  updateEntry(round.id, playerIndex, "bonus", event.target.value)
+                                }
+                              />
+                            </label>
+                            <label>
+                              <span>{text.penalty}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                value={entry.penalty}
+                                aria-label={`${data.players[playerIndex] || `${text.player} ${playerIndex + 1}`} ${text.penalty}`}
+                                onChange={(event) =>
+                                  updateEntry(round.id, playerIndex, "penalty", event.target.value)
+                                }
+                              />
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </section>
             );
           })}

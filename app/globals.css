@@ -564,26 +564,116 @@ a:focus-visible {
 
 .round-list {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .marriage-round,
 .call-round {
+  min-width: 0;
+  scroll-margin-top: 90px;
   padding: 18px 22px 20px;
+}
+
+.round-card-collapsed {
+  padding: 14px 18px;
 }
 
 .round-card-heading {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
-  margin-bottom: 15px;
+  margin-bottom: 0;
 }
 
 .round-card-heading h3 {
-  margin: 0;
+  min-width: 0;
+  margin: 0 auto 0 0;
+  overflow-wrap: anywhere;
   font-size: 18px;
   font-weight: 800;
+}
+
+.round-card-controls {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.round-card-controls .button {
+  min-height: 44px;
+}
+
+.button-round-toggle {
+  border-color: #d5e6db;
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
+.button-round-toggle:hover {
+  border-color: #b7d4c2;
+  background: #dff0e5;
+}
+
+.round-card-preview {
+  margin-top: 10px;
+}
+
+.round-preview-player-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 8px;
+}
+
+.round-preview-player {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #edf1ef;
+  border-radius: 10px;
+  background: #f8faf9;
+  font-size: 14px;
+}
+
+.round-preview-player strong {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.round-preview-player .score-value {
+  flex: 0 0 auto;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.round-card-content {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 220ms ease, opacity 160ms ease;
+}
+
+.round-card-content-expanded {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.round-card-content-inner {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.round-card-content-expanded .round-card-content-inner {
+  padding-top: 14px;
 }
 
 .marriage-player-grid {
@@ -1630,6 +1720,18 @@ a:focus-visible {
   .call-round,
   .summary-panel {
     padding: 17px;
+  }
+
+  .round-card-collapsed {
+    padding: 12px;
+  }
+
+  .round-card-controls {
+    width: 100%;
+  }
+
+  .round-card-controls .button {
+    flex: 1 1 auto;
   }
 
   .player-name-grid,

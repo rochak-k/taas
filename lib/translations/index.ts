@@ -37,6 +37,10 @@ export interface Translations {
   startTracking: string;
   addGame: string;
   addRound: string;
+  viewGame: string;
+  hideGame: string;
+  viewRound: string;
+  hideRound: string;
   game: string;
   round: string;
   points: string;
