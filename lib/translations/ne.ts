@@ -104,7 +104,7 @@ export const ne: Translations = {
   rateHelp: "हरेक अंकको रुपैयाँ रकम।",
   languageEnglish: "English",
   languageNepali: "नेपाली",
-  homeIntroduction: "परिवारसँग तास खेल्दा स्कोर राख्ने सजिलो तरिका।",
+  homeIntroduction: " तास खेल्दा स्कोर राख्ने सजिलो तरिका।",
   rupees: "रु.",
   roundNumber: "राउन्ड",
 };

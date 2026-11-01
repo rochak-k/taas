@@ -104,7 +104,7 @@ export const en: Translations = {
   rateHelp: "The amount of rupees for each point.",
   languageEnglish: "English",
   languageNepali: "नेपाली",
-  homeIntroduction: "Simple scorekeeping for family card games.",
+  homeIntroduction: "Simple scorekeeping for card games.",
   rupees: "Rs.",
   roundNumber: "Round",
 };

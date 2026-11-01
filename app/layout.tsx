@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Taas",
-  description: "A simple, family-friendly score tracker for Marriage and Call Break.",
+  description: "A simple score tracker for Marriage and Call Break.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
