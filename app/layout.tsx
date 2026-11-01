@@ -9,7 +9,18 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <div className="site-frame">
+          {children}
+          <footer className="site-footer">
+            <div className="site-footer-content">
+              <span className="site-footer-copyright">
+                © Rochak Khatiwada
+              </span>
+            </div>
+          </footer>
+        </div>
+      </body>
     </html>
   );
 }
